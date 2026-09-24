@@ -1,7 +1,6 @@
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import basicSsl from "@vitejs/plugin-basic-ssl"
 import { defineConfig } from "vite"
 import type { Plugin } from "vite"
 import type { IncomingMessage, ServerResponse } from "node:http"
@@ -71,13 +70,47 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    basicSsl(),
+    // basicSsl(),
     mockHabitsApi(),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "sw",
       filename: "sw.ts",
       registerType: "prompt",
+      workbox: {
+        // Precache: static files built by Vite
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+         runtimeCaching: [
+          {
+            // Cache Supabase API responses
+           
+            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "supabase-public-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60, // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache images from any source
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "images-cache",
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
+        ],
+      },
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,json,svg,png,ico,woff2}"],
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
